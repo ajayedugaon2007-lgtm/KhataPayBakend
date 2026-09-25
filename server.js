@@ -1,5 +1,4 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config();
 
 const app = require('./src/app');
 const pool = require('./src/config/database');
@@ -12,16 +11,12 @@ const PORT = process.env.PORT || 5000;
 
     console.log('Database connected successfully');
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
 
   } catch (error) {
-    console.error(
-      'Database connection failed:',
-      error.message || error
-    );
-
-    process.exitCode = 1;
+    console.error('Database connection failed:', error.message);
+    process.exit(1);
   }
 })();
