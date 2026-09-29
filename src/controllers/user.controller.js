@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { success } = require('../utils/response');
 const userModel = require('../models/user.model');
+const { registerOwner: createOwnerRegistration } = require('../services/ownerRegistration.service');
 const createCrudController = require('./crud.controller');
 
 function withoutPassword(record) {
@@ -35,6 +36,12 @@ async function registerUser(req, res, next) {
   } catch (error) { return next(error); }
 }
 
+async function registerOwnerHandler(req, res, next) {
+  try {
+    return success(res, 'Owner registered successfully', await createOwnerRegistration(req.body), 201);
+  } catch (error) { return next(error); }
+}
+
 async function login(req, res, next) {
   try {
     const { identifier, email, username, phone, password } = req.body;
@@ -47,4 +54,4 @@ async function login(req, res, next) {
   } catch (error) { return next(error); }
 }
 
-module.exports = { ...crud, register: registerUser, login };
+module.exports = { ...crud, register: registerUser, registerOwner: registerOwnerHandler, login };
