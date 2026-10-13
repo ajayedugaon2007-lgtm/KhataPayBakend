@@ -1,2 +1,2 @@
-const createCrudController = require('./crud.controller');
-module.exports = createCrudController(require('../models/staff.model'), 'Staff member');
+const { createResourceController } = require('./base.controller');
+module.exports = createResourceController(require('../models/Staff'), 'Staff member');

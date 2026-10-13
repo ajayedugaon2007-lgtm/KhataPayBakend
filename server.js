@@ -1,22 +1,30 @@
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 
 const app = require('./src/app');
-const pool = require('./src/config/database');
+const { connectDatabase, pool } = require('./src/config/db');
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT || 5000);
 
-(async () => {
-  try {
-    await pool.connectDatabase();
+async function start() {
+  await connectDatabase();
+  console.log('Database connected successfully');
+  const server = await new Promise((resolve, reject) => {
+    const instance = app.listen(PORT, '0.0.0.0', () => resolve(instance));
+    instance.once('error', reject);
+  });
+  console.log(`KhataPay API listening on port ${PORT}`);
 
-    console.log('Database connected successfully');
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-
-  } catch (error) {
-    console.error('Database connection failed:', error.message);
-    process.exit(1);
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => server.close(async () => {
+      await pool.end();
+      process.exit(0);
+    }));
   }
-})();
+}
+
+start().catch(async (error) => {
+  console.error('Server startup failed:', error.message);
+  await pool.end();
+  process.exitCode = 1;
+});

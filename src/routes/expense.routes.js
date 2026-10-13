@@ -1,2 +1,1 @@
-const createCrudRouter = require('./crud.routes');
-module.exports = createCrudRouter(require('../controllers/expense.controller'));
+module.exports = require('./crud.routes')(require('../controllers/expense.controller'));
