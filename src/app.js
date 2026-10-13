@@ -8,6 +8,11 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/health', (req, res) => res.json({ success: true, message: 'KhataPay API is running', data: {} }));
 
 const routeModules = [
+	['dashboard', './routes/dashboard.routes'],
+	['reports', './routes/report.routes'],
+	['staff', './routes/staff.routes'],
+	['notifications', './routes/paymentReminder.routes'],
+	['auth', './routes/auth.routes'],
 	['users', './routes/user.routes'], ['sessions', './routes/session.routes'],
 	['businesses', './routes/business.routes'], ['business-members', './routes/businessMember.routes'],
 	['customers', './routes/customer.routes'], ['transactions', './routes/transaction.routes'],

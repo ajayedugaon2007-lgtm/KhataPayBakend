@@ -31,7 +31,21 @@ async function register(req, res, next) {
 
 async function registerUser(req, res, next) {
   try {
-    const record = await userModel.create({ ...req.body, password: await hashPassword(req.body.password) });
+    const body = req.body || {};
+    const name = body.name ?? body.fullName ?? body.full_name;
+    const phone = body.phone ?? body.mobile ?? body.mobileNumber ?? body.mobile_number;
+    if (!name || !phone) {
+      const error = new Error('Name, phone, and password are required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const record = await userModel.create({
+      ...body,
+      name,
+      phone: String(phone),
+      password: await hashPassword(body.password)
+    });
     return success(res, 'User registered successfully', withoutPassword(record), 201);
   } catch (error) { return next(error); }
 }

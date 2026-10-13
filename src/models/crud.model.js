@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const { pool } = require('../config/database');
 
 const metadataCache = new Map();
 const identifier = (value) => `\`${String(value).replace(/`/g, '``')}\``;

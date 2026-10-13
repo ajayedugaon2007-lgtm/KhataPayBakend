@@ -1,5 +1,5 @@
 const { createCrudModel } = require('./crud.model');
-const pool = require('../config/database');
+const { pool } = require('../config/database');
 
 const model = createCrudModel('users');
 
