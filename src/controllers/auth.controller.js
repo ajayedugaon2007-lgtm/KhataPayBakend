@@ -71,7 +71,13 @@ async function createRegistration(body, forceOwner = false) {
             password: await bcrypt.hash(userInput.password, 12),
             role
         });
+        if (!user?.id) {
+            throw Object.assign(new Error('User could not be confirmed in the database'), { statusCode: 500 });
+        }
         const business = role === 'OWNER' ? await Business.createForOwner(user.id, businessInput) : undefined;
+        if (role === 'OWNER' && !business?.id) {
+            throw Object.assign(new Error('Shop could not be confirmed in the database'), { statusCode: 500 });
+        }
         return { user: safeUser(user), ...(business ? { business } : {}) };
     } catch (error) {
         if (user?.id) {
