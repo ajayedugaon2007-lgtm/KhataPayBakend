@@ -40,17 +40,22 @@ model.createForOwner = async (userId, input) => {
     try {
         await connection.beginTransaction();
         const info = await getMetadata('businesses');
-        const nameColumn = info.columns.includes('name') ? 'name' : info.columns.includes('business_name') ? 'business_name' : null;
+        const nameColumn = ['shop_name', 'business_name', 'name']
+            .map((candidate) => info.columns.find((column) => column.toLowerCase() === candidate))
+            .find(Boolean);
         if (!nameColumn) {
-            throw Object.assign(new Error('Businesses table must include a name or business_name column'), { statusCode: 500 });
+            throw Object.assign(new Error('Businesses table must include a shop name column'), { statusCode: 500 });
         }
-        const businessName = input.name ?? input.business_name;
+        const businessName = input.shop_name ?? input.Shop_name ?? input.business_name ?? input.name;
         if (!businessName) {
             throw Object.assign(new Error('Business name is required'), { statusCode: 400 });
         }
         const businessInput = { ...input, [nameColumn]: businessName, owner_id: userId };
-        if (nameColumn !== 'name') delete businessInput.name;
-        if (nameColumn !== 'business_name') delete businessInput.business_name;
+        for (const key of Object.keys(businessInput)) {
+            if (['name', 'business_name', 'shop_name'].includes(key.toLowerCase()) && key !== nameColumn) {
+                delete businessInput[key];
+            }
+        }
         const values = Object.entries(businessInput).filter(([key, value]) => info.columns.includes(key) && key !== info.primaryKey && value !== undefined);
         const [result] = await connection.query(
             `INSERT INTO businesses (${values.map(([key]) => quote(key)).join(', ')}) VALUES (${values.map(() => '?').join(', ')})`,

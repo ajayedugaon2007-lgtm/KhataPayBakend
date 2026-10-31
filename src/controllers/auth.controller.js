@@ -9,9 +9,32 @@ function safeUser(user) {
     return result;
 }
 
-function validateCredentials(name, phone, password) {
-    if (!name || !phone || typeof password !== 'string' || password.length < 8) {
-        throw Object.assign(new Error('Name, phone, and a password of at least 8 characters are required'), { statusCode: 400 });
+function invalid(message) {
+    return Object.assign(new Error(message), { statusCode: 400 });
+}
+
+function getPasswordConfirmation(input, body) {
+    return input.confirmPassword ?? input.confirm_password ?? input.password_confirmation
+        ?? body.confirmPassword ?? body.confirm_password ?? body.password_confirmation;
+}
+
+function validateCredentials(name, email, phone, password, confirmation) {
+    if (typeof name !== 'string' || !name.trim()
+        || typeof email !== 'string' || !email.trim()
+        || typeof phone !== 'string' || !phone.trim()) {
+        throw invalid('Name, email, and phone are required');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        throw invalid('A valid email address is required');
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+        throw invalid('Password must be at least 8 characters long');
+    }
+    if (typeof confirmation !== 'string' || !confirmation) {
+        throw invalid('Confirm password is required');
+    }
+    if (password !== confirmation) {
+        throw invalid('Password and confirm password do not match');
     }
 }
 
@@ -23,13 +46,20 @@ async function createRegistration(body, forceOwner = false) {
     }
 
     const businessInput = body.business || body.shop || {
-        name: body.business_name || body.shop_name,
+        name: body.business_name || body.shop_name || body.Shop_name,
         phone: body.business_phone || body.shop_phone,
-        address: body.business_address || body.shop_address
+        address: body.business_address || body.shop_address || body.address
     };
-    validateCredentials(userInput.name, userInput.phone, userInput.password);
-    if (role === 'OWNER' && !businessInput.name) {
-        throw Object.assign(new Error('Business name is required for owner registration'), { statusCode: 400 });
+    validateCredentials(
+        userInput.name,
+        userInput.email,
+        userInput.phone,
+        userInput.password,
+        getPasswordConfirmation(userInput, body)
+    );
+    if (role === 'OWNER' && (!businessInput.name && !businessInput.shop_name && !businessInput.Shop_name
+        || typeof businessInput.address !== 'string' || !businessInput.address.trim())) {
+        throw invalid('Shop name and address are required for owner registration');
     }
 
     let user;
