@@ -15,46 +15,59 @@ function validateCredentials(name, phone, password) {
     }
 }
 
-async function register(req, res, next) {
-    try {
-        const { name, phone, email, password } = req.body || {};
-        validateCredentials(name, phone, password);
-        const user = await User.create({
-            name: String(name).trim(),
-            phone: String(phone).trim(),
-            email: email ? String(email).trim().toLowerCase() : undefined,
-            password: await bcrypt.hash(password, 12),
-            role: 'USER'
-        });
-        return success(res, 'Registration successful', { user: safeUser(user) }, 201);
-    } catch (error) { return next(error); }
-}
+async function createRegistration(body, forceOwner = false) {
+    const userInput = body.user || body;
+    const role = forceOwner ? 'OWNER' : String(userInput.role || body.role || 'USER').trim().toUpperCase();
+    if (!['USER', 'OWNER'].includes(role)) {
+        throw Object.assign(new Error('Role must be USER or OWNER'), { statusCode: 400 });
+    }
 
-async function registerOwner(req, res, next) {
+    const businessInput = body.business || body.shop || {
+        name: body.business_name || body.shop_name,
+        phone: body.business_phone || body.shop_phone,
+        address: body.business_address || body.shop_address
+    };
+    validateCredentials(userInput.name, userInput.phone, userInput.password);
+    if (role === 'OWNER' && !businessInput.name) {
+        throw Object.assign(new Error('Business name is required for owner registration'), { statusCode: 400 });
+    }
+
     let user;
     try {
-        const body = req.body || {};
-        const userInput = body.user || body;
-        const businessInput = body.business || {
-            name: body.business_name,
-            phone: body.business_phone,
-            address: body.business_address
-        };
-        validateCredentials(userInput.name, userInput.phone, userInput.password);
-        if (!businessInput.name) throw Object.assign(new Error('Business name is required'), { statusCode: 400 });
         user = await User.create({
             name: String(userInput.name).trim(),
             phone: String(userInput.phone).trim(),
             email: userInput.email ? String(userInput.email).trim().toLowerCase() : undefined,
             password: await bcrypt.hash(userInput.password, 12),
-            role: 'OWNER'
+            role
         });
-        const business = await Business.createForOwner(user.id, businessInput);
-        return success(res, 'Owner registration successful', { user: safeUser(user), business }, 201);
+        const business = role === 'OWNER' ? await Business.createForOwner(user.id, businessInput) : undefined;
+        return { user: safeUser(user), ...(business ? { business } : {}) };
     } catch (error) {
-        if (user?.id) await User.remove(user.id).catch(() => { });
-        return next(error);
+        if (user?.id) {
+            try {
+                await User.remove(user.id);
+            } catch (cleanupError) {
+                console.error('Failed to remove user after registration failed:', cleanupError);
+            }
+        }
+        throw error;
     }
+}
+
+async function register(req, res, next) {
+    try {
+        const data = await createRegistration(req.body || {});
+        const message = data.business ? 'Owner registration successful' : 'Registration successful';
+        return success(res, message, data, 201);
+    } catch (error) { return next(error); }
+}
+
+async function registerOwner(req, res, next) {
+    try {
+        const data = await createRegistration(req.body || {}, true);
+        return success(res, 'Owner registration successful', data, 201);
+    } catch (error) { return next(error); }
 }
 
 async function login(req, res, next) {
