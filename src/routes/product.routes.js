@@ -1,1 +1,0 @@
-module.exports = require('./crud.routes')(require('../controllers/product.controller'));

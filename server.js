@@ -1,8 +1,46 @@
 require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 
-const app = require('./src/app');
-const { connectDatabase, pool } = require('./src/config/db');
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const { connectDatabase, pool } = require('./config/db');
+
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
+app.get('/', (req, res) => res.json({
+	status: 'OK',
+	message: 'KhataPay Backend Connected to MySQL Database!'
+}));
+app.get('/health', (req, res) => res.json({ success: true, message: 'KhataPay API is running', data: {} }));
+
+const routeModules = [
+	['auth', './routes/auth.routes'],
+	['dashboard', './routes/dashboard.routes'],
+	['businesses', './routes/business.routes'],
+	['customers', './routes/customer.routes'],
+	['transactions', './routes/transaction.routes'],
+	['products', './routes/product.routes'],
+	['invoices', './routes/invoice.routes'],
+	['payments', './routes/payment.routes'],
+	['expenses', './routes/expense.routes'],
+	['staff', './routes/staff.routes'],
+	['notifications', './routes/notification.routes'],
+	['reports', './routes/report.routes']
+];
+
+for (const [path, modulePath] of routeModules) app.use(`/api/${path}`, require(modulePath));
+
+app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+app.use((error, req, res, next) => {
+	if (res.headersSent) return next(error);
+	const status = error.statusCode || error.status || (error.code === 'ER_DUP_ENTRY' ? 409 : 500);
+	if (status >= 500) console.error(error);
+	return res.status(status).json({
+		success: false,
+		message: status >= 500 ? 'Internal server error' : error.message
+	});
+});
 
 const PORT = Number(process.env.PORT || 5000);
 let startupStage = 'database connection';
