@@ -7,7 +7,7 @@ const {
 	assertBusinessAccess,
 	success,
 	asyncHandler
-} = require('../config/db');
+} = require('../config/api');
 
 const router = express.Router();
 router.use(authenticate);

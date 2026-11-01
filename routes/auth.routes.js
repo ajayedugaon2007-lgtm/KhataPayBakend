@@ -10,7 +10,7 @@ const {
 	success,
 	asyncHandler,
 	invalid
-} = require('../config/db');
+} = require('../config/api');
 
 const router = express.Router();
 const users = createModel('users');

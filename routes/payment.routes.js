@@ -1,1 +1,1 @@
-module.exports = require('../config/db').createCrudRouter('payments', 'Payment');
+module.exports = require('../config/api').createCrudRouter('payments', 'Payment');

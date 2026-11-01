@@ -47,7 +47,6 @@ let startupStage = 'database connection';
 
 async function start() {
   await connectDatabase();
-  console.log('Database connected successfully');
   startupStage = 'HTTP server';
   const server = await new Promise((resolve, reject) => {
     const instance = app.listen(PORT, '0.0.0.0', () => resolve(instance));

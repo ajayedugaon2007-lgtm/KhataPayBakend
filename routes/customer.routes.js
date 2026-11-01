@@ -1,1 +1,1 @@
-module.exports = require('../config/db').createCrudRouter('customers', 'Customer');
+module.exports = require('../config/api').createCrudRouter('customers', 'Customer');

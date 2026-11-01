@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate, success, asyncHandler } = require('../config/db');
+const { authenticate, success, asyncHandler } = require('../config/api');
 const { getSummary } = require('../services/report.service');
 
 const router = express.Router();

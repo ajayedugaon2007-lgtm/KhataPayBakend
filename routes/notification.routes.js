@@ -1,1 +1,1 @@
-module.exports = require('../config/db').createCrudRouter('notifications', 'Notification');
+module.exports = require('../config/api').createCrudRouter('notifications', 'Notification');
