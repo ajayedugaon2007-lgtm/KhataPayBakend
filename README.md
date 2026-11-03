@@ -12,9 +12,10 @@ Configure `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and
 `JWT_SECRET` in `.env`. `DB_NAME` defaults to `khatapay_db`. Do not commit
 database credentials or the JWT secret.
 
-Start the API with `npm start` (or `npm run dev` during development). The API
-connects to MySQL before listening. `GET /health` checks that the HTTP server is
-running.
+Set `PORT=5013` in `.env` to run the API on port 5013; if `PORT` is not set,
+5013 is the default. Start the API with `npm start` (or `npm run dev` during
+development). The API connects to MySQL before listening. `GET /health` checks
+that the HTTP server is running.
 
 ## API
 

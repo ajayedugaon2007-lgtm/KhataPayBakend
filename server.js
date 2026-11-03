@@ -42,7 +42,7 @@ app.use((error, req, res, next) => {
 	});
 });
 
-const PORT = Number(process.env.PORT || 5000);
+const PORT = Number(process.env.PORT || 5013);
 let startupStage = 'database connection';
 
 async function start() {
