@@ -118,3 +118,95 @@ CREATE TABLE IF NOT EXISTS notifications (
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- KhataPay UPI/payment tables are separate from the legacy payments CRUD table.
+-- Never store raw bank account numbers, bank passwords, UPI PINs, or OTPs.
+CREATE TABLE IF NOT EXISTS bank_accounts (
+	id CHAR(36) PRIMARY KEY,
+	user_id VARCHAR(100) NOT NULL,
+	provider VARCHAR(40) NOT NULL,
+	provider_account_ref VARCHAR(255) NOT NULL,
+	account_holder_name VARCHAR(150) NOT NULL,
+	bank_name VARCHAR(150) NOT NULL,
+	account_last4 CHAR(4) NOT NULL,
+	ifsc_code CHAR(11),
+	verification_status ENUM('PENDING', 'VERIFIED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+	status ENUM('ACTIVE', 'DISABLED') NOT NULL DEFAULT 'ACTIVE',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_bank_provider_ref (provider, provider_account_ref),
+	KEY idx_bank_accounts_user (user_id),
+	CONSTRAINT fk_bank_accounts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS bank_verifications (
+	id CHAR(36) PRIMARY KEY,
+	user_id VARCHAR(100) NOT NULL,
+	bank_account_id CHAR(36) NOT NULL,
+	provider VARCHAR(40) NOT NULL,
+	provider_reference VARCHAR(255),
+	status ENUM('PENDING', 'VERIFIED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	KEY idx_bank_verifications_user (user_id, created_at),
+	CONSTRAINT fk_bank_verifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+	CONSTRAINT fk_bank_verifications_account FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS upi_profiles (
+	user_id VARCHAR(100) PRIMARY KEY,
+	vpa VARCHAR(100) NOT NULL,
+	display_name VARCHAR(150) NOT NULL,
+	verification_status ENUM('UNVERIFIED', 'VERIFIED', 'FAILED') NOT NULL DEFAULT 'UNVERIFIED',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_upi_profiles_vpa (vpa),
+	CONSTRAINT fk_upi_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS merchant_qrs (
+	id CHAR(36) PRIMARY KEY,
+	user_id VARCHAR(100) NOT NULL,
+	qr_payload TEXT NOT NULL,
+	status ENUM('ACTIVE', 'DISABLED') NOT NULL DEFAULT 'ACTIVE',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_merchant_qrs_user (user_id),
+	CONSTRAINT fk_merchant_qrs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS khatapay_payment_records (
+	id CHAR(36) PRIMARY KEY,
+	user_id VARCHAR(100) NOT NULL,
+	merchant_user_id VARCHAR(100) NOT NULL,
+	qr_id CHAR(36),
+	idempotency_key VARCHAR(128) NOT NULL,
+	amount DECIMAL(10,2) NOT NULL,
+	currency CHAR(3) NOT NULL DEFAULT 'INR',
+	status ENUM('PENDING', 'SUCCEEDED', 'FAILED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+	provider VARCHAR(40) NOT NULL,
+	provider_order_id VARCHAR(255),
+	provider_payment_id VARCHAR(255),
+	note VARCHAR(200),
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_payment_idempotency (user_id, idempotency_key),
+	UNIQUE KEY uq_payment_provider_order_ref (provider, provider_order_id),
+	UNIQUE KEY uq_payment_provider_ref (provider, provider_payment_id),
+	KEY idx_payment_payer (user_id, created_at),
+	KEY idx_payment_merchant (merchant_user_id, created_at),
+	CONSTRAINT fk_khatapay_payments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+	CONSTRAINT fk_khatapay_payments_merchant FOREIGN KEY (merchant_user_id) REFERENCES users(id) ON DELETE CASCADE,
+	CONSTRAINT fk_khatapay_payments_qr FOREIGN KEY (qr_id) REFERENCES merchant_qrs(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
+	event_id VARCHAR(191) PRIMARY KEY,
+	provider VARCHAR(40) NOT NULL,
+	payment_id CHAR(36) NOT NULL,
+	outcome ENUM('PROCESSING', 'IGNORED_UNVERIFIED', 'PROVIDER_VERIFIED') NOT NULL,
+	received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	KEY idx_payment_webhook_payment (payment_id, received_at),
+	CONSTRAINT fk_payment_webhook_payment FOREIGN KEY (payment_id)
+		REFERENCES khatapay_payment_records(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

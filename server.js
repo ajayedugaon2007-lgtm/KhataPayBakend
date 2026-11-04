@@ -7,7 +7,14 @@ const app = express();
 const { connectDatabase, pool } = require('./config/db');
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({
+	limit: '2mb',
+	verify(req, res, buffer) {
+		if (req.originalUrl.split('?')[0] === '/api/webhooks/payment') {
+			req.rawBody = Buffer.from(buffer);
+		}
+	}
+}));
 app.get('/', (req, res) => res.json({
 	status: 'OK',
 	message: 'KhataPay Backend Connected to MySQL Database!'
@@ -16,6 +23,10 @@ app.get('/health', (req, res) => res.json({ success: true, message: 'KhataPay AP
 
 const routeModules = [
 	['auth', './routes/auth.routes'],
+	['bank', './routes/bank.routes'],
+	['upi', './routes/upi.routes'],
+	['qr', './routes/qr.routes'],
+	['webhooks', './routes/webhooks.routes'],
 	['dashboard', './routes/dashboard.routes'],
 	['businesses', './routes/business.routes'],
 	['customers', './routes/customer.routes'],
